@@ -4,6 +4,9 @@
 *.dll
 *.so
 *.dylib
+turtle.*
+turtle_darwin.*
+turtle_linux.*
 
 # Test binary, built with `go test -c`
 *.test
@@ -13,3 +16,4 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+.idea
