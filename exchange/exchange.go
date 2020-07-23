@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/shopspring/decimal"
 	"github.com/xyths/hs"
+	"github.com/xyths/hs/logger"
 )
 
 type Ticker = hs.Ticker
@@ -18,4 +19,23 @@ type Exchange interface {
 	SetTickerChannel(tickerCh chan Ticker)
 	SetCandleChannel(candleCh chan Candle)
 	Start(ctx context.Context)
+}
+
+type Config struct {
+	hs.ExchangeConf
+
+	Csv *CsvExchangeConfig `json:"csv,omitempty"`
+}
+
+func New(config Config) (ex Exchange) {
+	switch config.Name {
+	case "csv":
+		if config.Csv == nil {
+			logger.Sugar.Fatal("no csv config")
+		}
+		ex = NewCsvExchange(*config.Csv)
+	default:
+		ex = NewTurtle(config)
+	}
+	return
 }

@@ -21,7 +21,7 @@ type TurtleExchange struct {
 	candleCh chan Candle
 }
 
-func NewTurtle(config hs.ExchangeConf) *TurtleExchange {
+func NewTurtle(config Config) *TurtleExchange {
 	var ex hs.Exchange
 	switch config.Name {
 	case hs.Huobi:

@@ -14,7 +14,7 @@ import (
 
 type Config struct {
 	Mongo    hs.MongoConf
-	Exchange hs.ExchangeConf
+	Exchange exchange.Config
 	Strategy strategy.Config
 }
 
@@ -44,12 +44,7 @@ func (n *Node) Init(ctx context.Context) {
 }
 
 func (n *Node) initEx(ctx context.Context) {
-	switch n.config.Exchange.Name {
-	case "csv":
-		n.exchange = exchange.NewCSV(n.config.Exchange.Label)
-	default:
-		n.exchange = exchange.NewTurtle(n.config.Exchange)
-	}
+	n.exchange = exchange.New(n.config.Exchange)
 }
 
 func (n *Node) initPortfolio(ctx context.Context) {
@@ -85,7 +80,7 @@ func (n *Node) Run(ctx context.Context) error {
 	n.exchange.Start(ctx)
 
 	// serve
-	logger.Sugar.Info("turtle node started")
+	logger.Sugar.Info("turtle node(local) started")
 	<-ctx.Done()
 
 	return nil
