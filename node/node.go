@@ -45,6 +45,7 @@ func (n *Node) Init(ctx context.Context) {
 
 func (n *Node) initEx(ctx context.Context) {
 	n.exchange = exchange.New(n.config.Exchange)
+	n.executor = executor.New(n.exchange)
 }
 
 func (n *Node) initPortfolio(ctx context.Context) {
@@ -52,7 +53,7 @@ func (n *Node) initPortfolio(ctx context.Context) {
 }
 
 func (n *Node) initStrategy(ctx context.Context) {
-	n.strategy = turtle.New(n.exchange, n.executor, n.portfolio)
+	n.strategy = turtle.New(turtle.Config{2000, 3}, n.exchange, n.executor, n.portfolio)
 }
 
 func (n *Node) Close(ctx context.Context) {

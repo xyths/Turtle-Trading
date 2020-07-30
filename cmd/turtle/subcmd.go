@@ -95,8 +95,8 @@ func download(ctx *cli.Context) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
-	for i := candles.Length() - 1; i >= 0; i-- {
+	defer func() { _ = f.Close() }()
+	for i := 0; i < candles.Length(); i++ {
 		if _, err := fmt.Fprintf(f, "%d,%f,%f,%f,%f,%f\n", candles.Timestamp[i], candles.Open[i], candles.High[i], candles.Low[i], candles.Close[i], candles.Volume[i]); err != nil {
 			log.Println(err)
 		}

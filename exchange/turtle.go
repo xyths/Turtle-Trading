@@ -37,6 +37,22 @@ func NewTurtle(config Config) *TurtleExchange {
 	return t
 }
 
+func (t *TurtleExchange) Symbols() []string {
+	return []string{}
+}
+
+func (t *TurtleExchange) FeeCurrency() string {
+	return ""
+}
+
+func (t *TurtleExchange) Balance() map[string]decimal.Decimal {
+	return nil
+}
+
+func (t *TurtleExchange) LastPrice() decimal.Decimal {
+	return decimal.Zero
+}
+
 func (t *TurtleExchange) SetTickerChannel(tickerCh chan Ticker) {
 	t.tickerCh = tickerCh
 }
@@ -55,6 +71,14 @@ func (t *TurtleExchange) PricePrecision() int {
 }
 func (t *TurtleExchange) AmountPrecision() int {
 	return 0
+}
+
+func (t *TurtleExchange) Buy(price, amount decimal.Decimal, clientId string) (hs.Order, error) {
+	return hs.Order{}, nil
+}
+
+func (t *TurtleExchange) Sell(price, amount decimal.Decimal, clientId string) (hs.Order, error) {
+	return hs.Order{}, nil
 }
 
 func (t *TurtleExchange) Start(ctx context.Context) {

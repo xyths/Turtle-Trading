@@ -6,9 +6,12 @@ import (
 )
 
 type Portfolio interface {
-	//Setup(db *mongo.Database, ex exchange.Exchange)
-	Value() decimal.Decimal
-	Profit() decimal.Decimal
+	Init(cash, currency, fee, price decimal.Decimal)
+	Value(price decimal.Decimal) decimal.Decimal
+	Update(cash, currency, price decimal.Decimal, fee map[string]decimal.Decimal)
+	LastBuyPrice() decimal.Decimal
+	Currency() decimal.Decimal
+	Profit(price decimal.Decimal) decimal.Decimal
 	Start(ctx context.Context)
 	//Stop(ctx context.Context)
 }
