@@ -13,18 +13,23 @@ type Executor interface {
 	QuoteCurrency() string // BTC/USDT -> USDT
 	BaseCurrency() string  // BTC/USDT -> BTC
 	FeeCurrency() string
+
 	Balance() (cash, currency, fee decimal.Decimal)
+	Price() (decimal.Decimal, error)
+	FeePrice() (decimal.Decimal, error)
+
 	MinAmount() decimal.Decimal
 	MinTotal() decimal.Decimal
-	PricePrecision() int
-	AmountPrecision() int
+	PricePrecision() int32
+	AmountPrecision() int32
 	Buy(price, amount decimal.Decimal, clientId string) (hs.Order, error)
 	Sell(price, amount decimal.Decimal, clientId string) (hs.Order, error)
 	PlaceOrder(signal *types.Signal, clientId string) (hs.Order, error)
 }
 
-func New(ex exchange.Exchange) Executor {
-	return &TurtleExecutor{
-		ex: ex,
-	}
+type Config struct {
+}
+
+func New(config Config, ex exchange.Exchange) Executor {
+	return NewTurtleExecutor(config, ex)
 }

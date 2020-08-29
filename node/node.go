@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"github.com/shopspring/decimal"
 	"github.com/xyths/Turtle-Trading/exchange"
 	"github.com/xyths/Turtle-Trading/executor"
 	"github.com/xyths/Turtle-Trading/portfolio"
@@ -15,6 +16,7 @@ import (
 type Config struct {
 	Mongo    hs.MongoConf
 	Exchange exchange.Config
+	Executor executor.Config
 	Strategy strategy.Config
 }
 
@@ -45,11 +47,30 @@ func (n *Node) Init(ctx context.Context) {
 
 func (n *Node) initEx(ctx context.Context) {
 	n.exchange = exchange.New(n.config.Exchange)
-	n.executor = executor.New(n.exchange)
+	n.executor = executor.New(n.config.Executor, n.exchange)
 }
 
 func (n *Node) initPortfolio(ctx context.Context) {
-	n.portfolio = portfolio.New()
+	n.portfolio = portfolio.New(n.db)
+	if !n.portfolio.Load(ctx) {
+		// get balance
+		cash, currency, fee := n.executor.Balance()
+		price, err := n.executor.Price()
+		if err != nil {
+			logger.Sugar.Fatalf("get price error: %s", err)
+		}
+		//feePrice, err := n.executor.FeePrice()
+		//if err != nil {
+		//	logger.Sugar.Fatalf("get fee price error: %s", err)
+		//}
+		feeMap := make(map[string]decimal.Decimal)
+		feeMap[n.executor.FeeCurrency()] = fee
+		n.portfolio.Init(cash, currency, price, feeMap)
+		//_ = feePrice
+		if err := n.portfolio.Save(ctx); err != nil {
+			logger.Sugar.Fatalf("portfolio save error: %s", err)
+		}
+	}
 }
 
 func (n *Node) initStrategy(ctx context.Context) {

@@ -128,15 +128,6 @@ func (t *Turtle) signal() (signal *types.Signal, err error) {
 	timestamp := time.Unix(t.candle.Timestamp[l-1], 0).In(beijing).Format(utils.TimeLayout)
 
 	unit := t.portfolio.Value(decimal.NewFromFloat(t.candle.Close[l-1])).Div(hundred).Div(N)
-	averagePrice := average(t.candle.Open[l-1], t.candle.High[l-1], t.candle.Low[l-1], t.candle.Close[l-1])
-	buyPrice := averagePrice
-	if buyPrice > upper {
-		buyPrice = upper
-	}
-	sellPrice := averagePrice
-	if sellPrice < upper {
-		sellPrice = upper
-	}
 
 	if t.candle.High[l-1] >= upper {
 		logger.Sugar.Infof("突破上轨, Timestamp: %s, Upper: %f, High: %f", timestamp, uppers[l-2], t.candle.High[l-1])
@@ -145,12 +136,24 @@ func (t *Turtle) signal() (signal *types.Signal, err error) {
 			//unit := t.portfolio.Value(decimal.NewFromFloat(t.candle.Close[l-1])).Div(hundred).Div(N)
 			logger.Sugar.Debugf("N: %s, unit: %s", N, unit)
 			// open position
-			signal = &types.Signal{
-				Direction: types.Buy,
-				Price:     decimal.NewFromFloat(buyPrice),
-				Amount:    unit,
+			price := decimal.NewFromFloat(upper).Round(t.executor.PricePrecision())
+			amount := unit.Round(t.executor.AmountPrecision())
+			total := price.Mul(amount)
+			if total.GreaterThan(t.portfolio.Cash()) {
+				amount = t.portfolio.Cash().Div(price).Round(t.executor.AmountPrecision())
+				total = price.Mul(amount)
 			}
-			t.position = positionLongOpen
+			if amount.GreaterThanOrEqual(t.executor.MinAmount()) && total.GreaterThanOrEqual(t.executor.MinTotal()) {
+				signal = &types.Signal{
+					Direction:
+					types.Buy,
+					Price:  price,
+					Amount: amount,
+				}
+				t.position = positionLongOpen
+			} else {
+				logger.Sugar.Infow("下单数量太小", "price", price, "amount", amount, "total", total)
+			}
 		} else {
 			logger.Sugar.Info("目前不是空仓，无需操作")
 		}
@@ -161,12 +164,19 @@ func (t *Turtle) signal() (signal *types.Signal, err error) {
 			t.buyTimes = 0
 			t.sellTimes++
 			// try to close position
-			signal = &types.Signal{
-				Direction: types.Sell,
-				Price:     decimal.NewFromFloat(sellPrice),
-				Amount:    t.portfolio.Currency(),
+			price := decimal.NewFromFloat(lower).Round(t.executor.PricePrecision())
+			amount := t.portfolio.Currency().Round(t.executor.AmountPrecision())
+			total := price.Mul(amount)
+			if amount.GreaterThanOrEqual(t.executor.MinAmount()) && total.GreaterThanOrEqual(t.executor.MinTotal()) {
+				signal = &types.Signal{
+					Direction: types.Sell,
+					Price:     price,
+					Amount:    amount,
+				}
+				t.position = positionEmpty
+			} else {
+				logger.Sugar.Infow("下单数量太小", "price", price, "amount", amount, "total", total)
 			}
-			t.position = positionEmpty
 		} else {
 			logger.Sugar.Info("目前是空仓，无需操作")
 		}
@@ -177,12 +187,19 @@ func (t *Turtle) signal() (signal *types.Signal, err error) {
 			t.buyTimes = 0
 			t.sellTimes++
 			// try to close position
-			signal = &types.Signal{
-				Direction: types.Sell,
-				Price:     decimal.NewFromFloat(sellPrice),
-				Amount:    t.portfolio.Currency(),
+			price := t.portfolio.LastBuyPrice().Sub(N.Mul(decimal.NewFromFloat(2))).Round(t.executor.PricePrecision())
+			amount := t.portfolio.Currency().Round(t.executor.AmountPrecision())
+			total := price.Mul(amount)
+			if amount.GreaterThanOrEqual(t.executor.MinAmount()) && total.GreaterThanOrEqual(t.executor.MinTotal()) {
+				signal = &types.Signal{
+					Direction: types.Sell,
+					Price:     price,
+					Amount:    amount,
+				}
+				t.position = positionEmpty
+			} else {
+				logger.Sugar.Infow("下单数量太小", "price", price, "amount", amount, "total", total)
 			}
-			t.position = positionEmpty
 		} else {
 			logger.Sugar.Info("目前是空仓，无需操作")
 		}
@@ -192,14 +209,25 @@ func (t *Turtle) signal() (signal *types.Signal, err error) {
 		// add position
 		if t.position == positionLongOpen && t.buyTimes < t.Config.MaxBuyTimes {
 			// add position
-			signal = &types.Signal{
-				Direction: types.Buy,
-				Price:     decimal.NewFromFloat(buyPrice),
-				Amount:    unit,
+			price := t.portfolio.LastBuyPrice().Add(N.Mul(decimal.NewFromFloat(0.5))).Round(t.executor.PricePrecision())
+			amount := unit.Round(t.executor.AmountPrecision())
+			total := price.Mul(amount)
+			if total.GreaterThan(t.portfolio.Cash()) {
+				amount = t.portfolio.Cash().Div(price).Round(t.executor.AmountPrecision())
+				total = price.Mul(amount)
 			}
-			t.buyTimes++
-			if t.buyTimes == t.Config.MaxBuyTimes {
-				t.position = positionLongFull
+			if amount.GreaterThanOrEqual(t.executor.MinAmount()) && total.GreaterThanOrEqual(t.executor.MinTotal()) {
+				signal = &types.Signal{
+					Direction: types.Buy,
+					Price:     price,
+					Amount:    amount,
+				}
+				t.buyTimes++
+				if t.buyTimes == t.Config.MaxBuyTimes {
+					t.position = positionLongFull
+				}
+			} else {
+				logger.Sugar.Infow("下单数量太小", "price", price, "amount", amount, "total", total)
 			}
 		} else if t.position == positionLongFull {
 			logger.Sugar.Info("目前是满仓，无需操作")
@@ -213,9 +241,9 @@ func (t *Turtle) signal() (signal *types.Signal, err error) {
 
 func (t *Turtle) Start(ctx context.Context) {
 	// init portfolio first
-	cash, currency, fee := t.executor.Balance()
-	price := t.ex.LastPrice()
-	t.portfolio.Init(cash, currency, fee, price)
+	//cash, currency, fee := t.executor.Balance()
+	//price,err := t.ex.Price()
+	//t.portfolio.Init(cash, currency, fee, price)
 
 	go func() {
 		for {

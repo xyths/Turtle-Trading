@@ -19,8 +19,9 @@ type Config struct {
 }
 
 const (
-	CandleType1Min = "1m"
-	CandleType5Min = "5m"
-	CandleType1H   = "1h"
-	CandleType1D   = "1d"
+	CandleType1Min  = "1m"
+	CandleType5Min  = "5m"
+	CandleType15Min = "15m"
+	CandleType1H    = "1h"
+	CandleType1D    = "1d"
 )

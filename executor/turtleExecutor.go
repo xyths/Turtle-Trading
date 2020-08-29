@@ -7,16 +7,20 @@ import (
 	"github.com/xyths/Turtle-Trading/types"
 	"github.com/xyths/hs"
 	"github.com/xyths/hs/logger"
-	"strings"
 )
 
 // for test
 type TurtleExecutor struct {
-	ex exchange.Exchange
+	config Config
+	ex     exchange.Exchange
 
+	// for log and database
 	quoteCurrency string
 	baseCurrency  string
 	feeCurrency   string
+	// for exchange request
+	symbol    string
+	feeSymbol string
 
 	minAmount       decimal.Decimal
 	minTotal        decimal.Decimal
@@ -24,45 +28,52 @@ type TurtleExecutor struct {
 	amountPrecision int
 }
 
-func (t *TurtleExecutor) parseSymbol() {
-	symbols := t.ex.Symbols()
-	if len(symbols) < 1 {
-		logger.Sugar.Fatalf("no symbols set for exchange")
-	}
-	tokens := strings.Split(symbols[0], "/")
-	t.baseCurrency = tokens[0]
-	t.quoteCurrency = tokens[1]
+func NewTurtleExecutor(config Config, ex exchange.Exchange) *TurtleExecutor {
+	t := &TurtleExecutor{config: config, ex: ex}
+	//t.parseSymbol()
+	return t
 }
+
+//
+//func (t *TurtleExecutor) parseSymbol() {
+//	symbols := t.ex.symbol()
+//	if len(symbols) < 1 {
+//		logger.Sugar.Fatalf("no symbols set for exchange")
+//	}
+//	tokens := strings.Split(symbols[0], "/")
+//	t.baseCurrency = tokens[0]
+//	t.quoteCurrency = tokens[1]
+//	if t.config.FeeCurrency == "" {
+//		logger.Sugar.Fatalf("no fee currency")
+//	}
+//	t.feeCurrency = t.config.FeeCurrency
+//}
 
 // BTC/USDT -> USDT
 func (t *TurtleExecutor) QuoteCurrency() string {
-	if t.quoteCurrency == "" {
-		t.parseSymbol()
-	}
 	return t.quoteCurrency
 }
 
 // BTC/USDT -> BTC
 func (t *TurtleExecutor) BaseCurrency() string {
-	if t.quoteCurrency == "" {
-		t.parseSymbol()
-	}
 	return t.baseCurrency
 }
 
 func (t *TurtleExecutor) FeeCurrency() string {
-	if t.quoteCurrency == "" {
-		t.feeCurrency = t.ex.FeeCurrency()
-	}
 	return t.feeCurrency
 }
 
 func (t *TurtleExecutor) Balance() (cash, currency, fee decimal.Decimal) {
-	balance := t.ex.Balance()
-	cash = balance[t.QuoteCurrency()]
-	currency = balance[t.BaseCurrency()]
-	fee = balance[t.FeeCurrency()]
-	return
+	return t.ex.Balance()
+}
+
+// price of the base currency
+func (t *TurtleExecutor) Price() (decimal.Decimal, error) {
+	return t.ex.Price()
+}
+
+func (t *TurtleExecutor) FeePrice() (decimal.Decimal, error) {
+	return t.ex.FeePrice()
 }
 
 func (t *TurtleExecutor) MinAmount() decimal.Decimal {
@@ -73,12 +84,12 @@ func (t *TurtleExecutor) MinTotal() decimal.Decimal {
 	return decimal.Zero
 }
 
-func (t *TurtleExecutor) PricePrecision() int {
-	return 0
+func (t *TurtleExecutor) PricePrecision() int32 {
+	return 2
 }
 
-func (t *TurtleExecutor) AmountPrecision() int {
-	return 0
+func (t *TurtleExecutor) AmountPrecision() int32 {
+	return 5
 }
 
 func (t *TurtleExecutor) Buy(price, amount decimal.Decimal, clientId string) (hs.Order, error) {

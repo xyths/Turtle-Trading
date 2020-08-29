@@ -14,13 +14,13 @@ import (
 )
 
 type CsvExchange struct {
-	Symbol    string
+	symbol    string
 	candleCsv string
 	startTime time.Time
 
 	feeCurrency string
 	FeeRatio    decimal.Decimal
-	FeePrice    decimal.Decimal
+	feePrice    decimal.Decimal
 
 	tickerCh chan Ticker
 	candleCh chan Candle
@@ -49,7 +49,7 @@ func NewCsvExchange(config CsvExchangeConfig, symbols []string) *CsvExchange {
 	}
 
 	c := &CsvExchange{
-		Symbol:      symbols[0],
+		symbol:      symbols[0],
 		candleCsv:   config.File,
 		startTime:   startTime,
 		balance:     make(map[string]decimal.Decimal),
@@ -60,23 +60,39 @@ func NewCsvExchange(config CsvExchangeConfig, symbols []string) *CsvExchange {
 		c.balance[k] = decimal.NewFromFloat(v)
 	}
 	if config.FeePrice == 0 {
-		c.FeePrice = decimal.NewFromFloat(DefaultFeePrice)
+		c.feePrice = decimal.NewFromFloat(DefaultFeePrice)
 	} else {
-		c.FeePrice = decimal.NewFromFloat(config.FeePrice)
+		c.feePrice = decimal.NewFromFloat(config.FeePrice)
 	}
 	return c
 }
 
-func (c *CsvExchange) Symbols() []string {
-	return []string{c.Symbol}
+func (c *CsvExchange) QuoteCurrency() string {
+	return c.symbol
+}
+
+func (c *CsvExchange) BaseCurrency() string {
+	return c.symbol
+}
+
+func (c *CsvExchange) Symbol() string {
+	return c.symbol
 }
 
 func (c *CsvExchange) FeeCurrency() string {
 	return c.feeCurrency
 }
 
-func (c *CsvExchange) Balance() map[string]decimal.Decimal {
-	return c.balance
+func (c *CsvExchange) Balance() (cash, currency, fee decimal.Decimal) {
+	return
+}
+
+func (c *CsvExchange) Price() (decimal.Decimal, error) {
+	return decimal.Decimal{}, nil
+}
+
+func (c *CsvExchange) FeePrice() (decimal.Decimal, error) {
+	return decimal.Decimal{}, nil
 }
 
 func (c *CsvExchange) LastPrice() decimal.Decimal {
@@ -94,8 +110,8 @@ func (c *CsvExchange) LastPrice() decimal.Decimal {
 	open := decimal.RequireFromString(record[1])
 	high := decimal.RequireFromString(record[2])
 	low := decimal.RequireFromString(record[3])
-	close := decimal.RequireFromString(record[4])
-	price := open.Add(high).Add(low).Add(close).Div(decimal.NewFromInt(4))
+	close1 := decimal.RequireFromString(record[4])
+	price := open.Add(high).Add(low).Add(close1).Div(decimal.NewFromInt(4))
 	return price
 }
 
@@ -112,17 +128,17 @@ func (c *CsvExchange) MinAmount() decimal.Decimal {
 func (c *CsvExchange) MinTotal() decimal.Decimal {
 	return decimal.Zero
 }
-func (c *CsvExchange) PricePrecision() int {
+func (c *CsvExchange) PricePrecision() int32 {
 	return 0
 }
-func (c *CsvExchange) AmountPrecision() int {
+func (c *CsvExchange) AmountPrecision() int32 {
 	return 0
 }
 
 func (c *CsvExchange) Buy(price, amount decimal.Decimal, clientId string) (hs.Order, error) {
 	c.globalOrderId++
 	c.globalTradeId++
-	feeAmount := price.Mul(amount).Mul(c.FeeRatio).Div(c.FeePrice)
+	feeAmount := price.Mul(amount).Mul(c.FeeRatio).Div(c.feePrice)
 	fee := make(map[string]decimal.Decimal)
 	fee[c.feeCurrency] = feeAmount
 	trade := hs.Trade{
@@ -136,7 +152,7 @@ func (c *CsvExchange) Buy(price, amount decimal.Decimal, clientId string) (hs.Or
 		Id:            c.globalOrderId,
 		ClientId:      clientId,
 		Type:          hs.Buy,
-		Symbol:        c.Symbol,
+		Symbol:        c.symbol,
 		InitialPrice:  price,
 		InitialAmount: amount,
 		Timestamp:     time.Now().Unix(),
@@ -152,7 +168,7 @@ func (c *CsvExchange) Buy(price, amount decimal.Decimal, clientId string) (hs.Or
 func (c *CsvExchange) Sell(price, amount decimal.Decimal, clientId string) (hs.Order, error) {
 	c.globalOrderId++
 	c.globalTradeId++
-	feeAmount := price.Mul(amount).Mul(c.FeeRatio).Div(c.FeePrice)
+	feeAmount := price.Mul(amount).Mul(c.FeeRatio).Div(c.feePrice)
 	fee := make(map[string]decimal.Decimal)
 	fee[c.feeCurrency] = feeAmount
 	trade := hs.Trade{
@@ -166,7 +182,7 @@ func (c *CsvExchange) Sell(price, amount decimal.Decimal, clientId string) (hs.O
 		Id:            c.globalOrderId,
 		ClientId:      clientId,
 		Type:          hs.Sell,
-		Symbol:        c.Symbol,
+		Symbol:        c.symbol,
 		InitialPrice:  price,
 		InitialAmount: amount,
 		Timestamp:     time.Now().Unix(),
