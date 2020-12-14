@@ -81,8 +81,14 @@ func download(ctx *cli.Context) error {
 	switch conf.Strategy.CandleType {
 	case strategy.CandleType5Min:
 		period = getrequest.MIN5
+	case strategy.CandleType15Min:
+		period = getrequest.MIN15
+	case strategy.CandleType30Min:
+		period = getrequest.MIN30
 	case strategy.CandleType1H:
 		period = getrequest.MIN60
+	case strategy.CandleType4H:
+		period = getrequest.HOUR4
 	case strategy.CandleType1D:
 		period = getrequest.DAY1
 	}

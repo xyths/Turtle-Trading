@@ -22,6 +22,8 @@ const (
 	CandleType1Min  = "1m"
 	CandleType5Min  = "5m"
 	CandleType15Min = "15m"
+	CandleType30Min = "30m"
 	CandleType1H    = "1h"
+	CandleType4H    = "4h"
 	CandleType1D    = "1d"
 )
